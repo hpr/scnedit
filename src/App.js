@@ -4,6 +4,7 @@ import {useState} from 'react';
 
 function App() {
   const [bytes, setBytes] = useState([]);
+  const [proposedCols, setProposedCols] = useState(20);
   const [cols, setCols] = useState(20);
   const [layers, setLayers] = useState([]);
   const [selectedLayer, setSelectedLayer] = useState(0);
@@ -68,7 +69,8 @@ function App() {
         <input type="number" name="numLayers" value={numLayers} onChange={(e) => setNumLayers(Number(e.target.value))} />
         <button onClick={() => getLayers()}>Re-calculate layers</button>
         <div><label htmlFor="cols">Columns: </label></div>
-        <input type="number" name="cols" value={cols} onChange={(e) => setCols(Number(e.target.value))} />
+        <input type="number" name="cols" value={proposedCols} onChange={(e) => setProposedCols(Number(e.target.value))} />
+        <button onClick={() => setCols(Number(proposedCols))}>Set columns</button>
         <div><label htmlFor="layer">Selected Layer: </label></div>
         <select name="layer" value={selectedLayer} onChange={(e) => setSelectedLayer(Number(e.target.value))}>
           {layers.map((layer, i) => <option key={i} value={i}>{layer.layerId} (z = {layer.layerZ})</option>)}
