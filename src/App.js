@@ -1,6 +1,7 @@
 import './App.css';
 import stringHash from 'string-hash';
 import {useState} from 'react';
+import {saveAs} from 'file-saver';
 
 function App() {
   const [bytes, setBytes] = useState([]);
@@ -9,6 +10,9 @@ function App() {
   const [layers, setLayers] = useState([]);
   const [selectedLayer, setSelectedLayer] = useState(0);
   const [numLayers, setNumLayers] = useState(1);
+  const [paintMode, setPaintMode] = useState(false);
+  const [bucket, setBucket] = useState("0,-1,-1");
+  const [filename, setFilename] = useState("");
 
   const getLayers = (u8s = bytes) => {
     try {
@@ -41,7 +45,38 @@ function App() {
       setLayers(newLayers);
     } catch (err) {
       alert(`${err} (try a different number of layers?)`);
+      console.groupEnd();
     }
+  }
+
+  const exportScn = () => {
+    const layerData = [];
+    const layerSizes = [];
+    for (const layer of layers) {
+      const layerHdr = new DataView(new ArrayBuffer(8));
+      layerHdr.setUint32(0, layer.layerId, false);
+      layerHdr.setUint32(4, layer.layerZ, false);
+      const layerRLEs = layer.tiles.reduce((acc, tile) => {
+        const lastAutotileIdx = acc[acc.length - 4];
+        const lastTilesetId = acc[acc.length - 3];
+        const lastTileId = acc[acc.length - 2];
+        if (lastAutotileIdx === tile.autotileIdx && lastTilesetId === tile.tilesetId && lastTileId === tile.tileId) {
+          acc[acc.length - 1]++;
+        } else {
+          acc.push(tile.autotileIdx, tile.tilesetId, tile.tileId, 1);
+        }
+        return acc;
+      }, []);
+      const size = layerRLEs.length * 2 + 8;
+      const layerRLEsDv = new DataView(new ArrayBuffer(layerRLEs.length * 2));
+      layerRLEs.forEach((num, i) => layerRLEsDv.setInt16(i * 2, num, false));
+      layerData.push(layerHdr, layerRLEsDv);
+      layerSizes.push(size);
+    }
+    const layerSizesDv = new DataView(new ArrayBuffer(layerSizes.length * 4));
+    layerSizes.forEach((sz, i) => layerSizesDv.setUint32(i * 4, sz, false));
+    const blob = new Blob([ layerSizesDv, ...layerData ]);
+    saveAs(blob, filename);
   }
 
   const formatCell = (cell, ci) => {
@@ -55,26 +90,41 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <input type="file" accept=".scn" onChange={(evt) => {
-          const reader = new FileReader();
-          const file = evt.target.files[0];
-          reader.onload = () => {
-            const data = new Uint8Array(reader.result);
-            setBytes(data);
-            getLayers(data);
-          }
-          reader.readAsArrayBuffer(file);
-        }} />
-        <div><label htmlFor="numLayers">Number of layers: </label></div>
-        <input type="number" name="numLayers" value={numLayers} onChange={(e) => setNumLayers(Number(e.target.value))} />
-        <button onClick={() => getLayers()}>Re-calculate layers</button>
-        <div><label htmlFor="cols">Columns: </label></div>
-        <input type="number" name="cols" value={proposedCols} onChange={(e) => setProposedCols(Number(e.target.value))} />
-        <button onClick={() => setCols(Number(proposedCols))}>Set columns</button>
-        <div><label htmlFor="layer">Selected Layer: </label></div>
-        <select name="layer" value={selectedLayer} onChange={(e) => setSelectedLayer(Number(e.target.value))}>
-          {layers.map((layer, i) => <option key={i} value={i}>{layer.layerId} (z = {layer.layerZ})</option>)}
-        </select>
+        <div>
+          <input type="file" accept=".scn" onChange={(evt) => {
+            const reader = new FileReader();
+            const file = evt.target.files[0];
+            reader.onload = () => {
+              const data = new Uint8Array(reader.result);
+              setBytes(data);
+              setFilename(file.name);
+              getLayers(data);
+            }
+            reader.readAsArrayBuffer(file);
+          }} />
+          <button onClick={() => exportScn()}>Export changes</button>
+        </div>
+        <div>
+          <label htmlFor="numLayers">Number of layers: </label>
+          <input type="number" name="numLayers" value={numLayers} onChange={(e) => setNumLayers(Number(e.target.value))} />
+          <button onClick={() => getLayers()}>Re-calculate layers</button>
+        </div>
+        <div>
+          <label htmlFor="cols">Columns: </label>
+          <input type="number" name="cols" value={proposedCols} onChange={(e) => setProposedCols(Number(e.target.value))} />
+          <button onClick={() => setCols(Number(proposedCols))}>Set columns</button>
+        </div>
+        <div>
+          <label htmlFor="layer">Selected layer: </label>
+          <select name="layer" value={selectedLayer} onChange={(e) => setSelectedLayer(Number(e.target.value))}>
+            {layers.map((layer, i) => <option key={i} value={i}>{layer.layerId} (z = {layer.layerZ})</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="paintMode">Paint mode: </label>
+          <input type="checkbox" name="paintMode" value={paintMode} onChange={() => setPaintMode(!paintMode)}/>
+        </div>
+        <div><label htmlFor="bucket">Paint with: </label><input type="text" name="bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} /></div>
         <table>
           <tbody>
             {cols ? Array(rows).fill().map((_, ri) => <tr key={ri}>
