@@ -6,7 +6,6 @@ function App() {
   const [u8s, setU8s] = useState([]);
   const [cols, setCols] = useState(20);
   const [layers, setLayers] = useState([]);
-  const [numTiles, setNumTiles] = useState(0);
   const [selectedLayer, setSelectedLayer] = useState(0);
 
   const getLayers = (u8s) => {
@@ -20,7 +19,7 @@ function App() {
       const layerZ = dv.getUint32(8, false);
       const layerEnd = idx + layerSize + 4;
       idx += 12;
-      console.group(`layer ${layerId} (sz ${layerSize}, z ${layerZ}):`);
+      console.groupCollapsed(`layer ${layerId} (sz ${layerSize}, z ${layerZ}):`);
       const tiles = [];
       let totalTiles = 0;
       while (idx < layerEnd) {
@@ -35,16 +34,12 @@ function App() {
         tiles.push(...Array(numTiles).fill({ autotileIdx, tilesetId, tileId, color }))
         idx += 8;
       }
-      newLayers.push({layerId, layerZ, tiles});
-      if (totalTiles > maxTiles) maxTiles = totalTiles;
+      newLayers.push({layerId, layerZ, totalTiles, tiles});
+      console.log("i", idx, "/", u8s.length);
       console.groupEnd();
       idx = layerEnd; //?
-      console.log("i", idx, "/", u8s.length);
     }
     setLayers(newLayers);
-    setNumTiles(maxTiles);
-    console.log('layers', layers);
-    console.log(maxTiles);
   }
 
   const formatCell = (cell, ci) => {
@@ -52,7 +47,8 @@ function App() {
     return <td key={ci} style={{background: cell.color}}>{cell.autotileIdx},{cell.tilesetId},{cell.tileId}</td>
   }
 
-  const rows = Math.floor(numTiles / cols);
+  const layer = layers[selectedLayer] || {};
+  const rows = layer.totalTiles ? Math.ceil(layer.totalTiles / cols) : 0;
 
   return (
     <div className="App">
@@ -75,9 +71,9 @@ function App() {
         </select>
         <table>
           <tbody>
-            {cols && Array(rows).fill().map((_, ri) => <tr key={ri}>
-              {Array(cols).fill().map((_, ci) => formatCell(layers[selectedLayer].tiles[ri * cols + ci], ci))}
-            </tr>)}
+            {cols ? Array(rows).fill().map((_, ri) => <tr key={ri}>
+              {Array(cols).fill().map((_, ci) => formatCell(layer.tiles[ri * cols + ci], ci))}
+            </tr>) : null}
           </tbody>
         </table>
       </header>
