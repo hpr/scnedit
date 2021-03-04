@@ -81,9 +81,9 @@ function App() {
     saveAs(blob, filename);
   }
 
-  const formatCell = (cell, ci) => {
+  const formatCell = (cell, ci, idx) => {
     if (!cell) return <td key={ci}></td>
-    return <td key={ci} name={ci} style={{ background: cell.color }}>{cell.autotileIdx},{cell.tilesetId},{cell.tileId}</td>
+    return <td key={ci} name={idx} style={{ background: cell.color }}>{cell.autotileIdx},{cell.tilesetId},{cell.tileId}</td>
   }
 
   const layer = layers[selectedLayer] || {};
@@ -142,7 +142,7 @@ function App() {
         }}>
           <tbody>
             {cols ? Array(rows).fill().map((_, ri) => <tr key={ri}>
-              {Array(cols).fill().map((_, ci) => formatCell(layer.tiles[ri * cols + ci], ci))}
+              {Array(cols).fill().map((_, ci) => formatCell(layer.tiles[ri * cols + ci], ci, ri * cols + ci))}
             </tr>) : null}
           </tbody>
         </table>
