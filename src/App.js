@@ -14,6 +14,8 @@ function App() {
   const [bucket, setBucket] = useState("0,-1,-1");
   const [filename, setFilename] = useState("");
 
+  const getColor = (autotileIdx, tilesetId, tileId) => '#' + stringHash(`${autotileIdx},${tilesetId},${tileId}`).toString(16).slice(0, 4);
+
   const getLayers = (u8s = bytes) => {
     try {
       let idx = 0;
@@ -37,7 +39,7 @@ function App() {
           const tileId = dv.getInt16(idx + 4, false);
           const numTiles = dv.getInt16(idx + 6, false);
           console.log({ autotileIdx, tilesetId, tileId, numTiles });
-          const color = '#' + stringHash(`${autotileIdx},${tilesetId},${tileId}`).toString(16).slice(0, 4);
+          const color = getColor(autotileIdx, tilesetId, tileId);
           layer.tiles.push(...Array(numTiles).fill({ autotileIdx, tilesetId, tileId, color }))
         }
         console.groupEnd();
@@ -81,7 +83,7 @@ function App() {
 
   const formatCell = (cell, ci) => {
     if (!cell) return <td key={ci}></td>
-    return <td key={ci} style={{background: cell.color}}>{cell.autotileIdx},{cell.tilesetId},{cell.tileId}</td>
+    return <td key={ci} name={ci} style={{ background: cell.color }}>{cell.autotileIdx},{cell.tilesetId},{cell.tileId}</td>
   }
 
   const layer = layers[selectedLayer] || {};
@@ -125,7 +127,19 @@ function App() {
           <input type="checkbox" name="paintMode" value={paintMode} onChange={() => setPaintMode(!paintMode)}/>
         </div>
         <div><label htmlFor="bucket">Paint with: </label><input type="text" name="bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} /></div>
-        <table>
+        <table onClick={(evt) => {
+          if (!paintMode) return;
+          const i = Number(evt.target.getAttribute('name'));
+          const [autotileIdx, tilesetId, tileId] = bucket.split(',');
+          const color = getColor(autotileIdx, tilesetId, tileId);
+          const newLayers = [...layers];
+          const newSelectedLayer = {...layers[selectedLayer]};
+          const newTiles = [...newSelectedLayer.tiles];
+          newLayers[selectedLayer] = newSelectedLayer;
+          newSelectedLayer.tiles = newTiles;
+          newTiles[i] = { autotileIdx, tilesetId, tileId, color };
+          setLayers(newLayers);
+        }}>
           <tbody>
             {cols ? Array(rows).fill().map((_, ri) => <tr key={ri}>
               {Array(cols).fill().map((_, ci) => formatCell(layer.tiles[ri * cols + ci], ci))}
