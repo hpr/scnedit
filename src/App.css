@@ -29,7 +29,8 @@ table {
 }
 
 td {
-  height: 0;
+  height: 2em;
+  width: 2em;
   font-size: 0.4em;
 }
 td:after, td:before {
